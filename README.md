@@ -6,3 +6,5 @@ Blender macro to create particle hairs from beveled Bézier curves
 ⚠️ Only supports curves with round bevels for now. 
 
 ⚠️ Hair emitter will not follow the first curve point if you edit the curve
+
+![screenshot](screenshot.png)
