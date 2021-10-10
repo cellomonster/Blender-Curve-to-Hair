@@ -12,9 +12,13 @@ def main(context):
 	
 	curve_data = curve_object.data
 	
-	#check bevel mode. only round bevel is currently supported
-	if(curve_data.bevel_mode != 'ROUND'):
-		#todo: support object/profile mode
+	#check bevel mode. profile is not YET supported
+	if(curve_data.bevel_mode == 'PROFILE'):
+		#todo: support profile mode
+		return
+	
+	#make sure the curve actually has a bevel object
+	if(curve_data.bevel_mode == 'OBJECT' and curve_data.bevel_object == None):
 		return
 	
 	curve_object.display_type = 'WIRE'
@@ -37,19 +41,42 @@ def main(context):
 	
 	first_spline_point = curve_data.splines[0].bezier_points[0];
 	#calculate rotation of the hair emitter
-	first_spline_handle_direction = first_spline_point.co - first_spline_point.handle_left
+	first_spline_handle_direction = first_spline_point.co - first_spline_point.handle_right
 	hair_emitter_normal = mathutils.Vector(first_spline_handle_direction).normalized()
-	up = mathutils.Vector((0, 0, 1))
-	hair_emitter_rotation = up.rotation_difference(hair_emitter_normal).to_euler()
+	hair_emitter_rotation = hair_emitter_normal.to_track_quat('Z', 'Y')
+	#rotate hair_emitter_rotation by the tilt of the first spline point
+	#hair_emitter_rotation.rotate(mathutils.Quaternion(hair_emitter_normal, -first_spline_point.tilt))
 	#and radius
 	hair_emitter_radius = curve_data.bevel_depth / first_spline_point.radius
+	
+	hair_emitter = None
 		
 	#todo: avoid using bpy.ops
-	#create circle with radius of round bevel curve
-	bpy.ops.mesh.primitive_circle_add(fill_type='TRIFAN', radius = hair_emitter_radius, rotation = hair_emitter_rotation, location = (0, 0, 0))
-	#the newly created circle is selected, so grab it from context
-	hair_emitter = bpy.context.active_object
-	
+	if(curve_data.bevel_mode == 'ROUND'):	
+		#create circle with radius of round bevel curve
+		bpy.ops.mesh.primitive_circle_add(fill_type='TRIFAN', radius = hair_emitter_radius, rotation = hair_emitter_rotation.to_euler(), location = (0, 0, 0))
+		#the newly created circle is selected, so grab it from context
+		hair_emitter = bpy.context.active_object
+	elif(curve_data.bevel_mode == 'OBJECT'):
+		bpy.ops.object.select_all(action='DESELECT')
+		bpy.context.view_layer.objects.active = curve_data.bevel_object
+		curve_data.bevel_object.select_set(True)
+		bpy.ops.object.duplicate_move()
+		hair_emitter = bpy.context.active_object
+		bpy.ops.object.convert(target='MESH')
+		bpy.ops.object.editmode_toggle()
+		bpy.ops.mesh.select_all(action='SELECT')
+		bpy.ops.mesh.edge_face_add()
+		bpy.ops.object.editmode_toggle()
+		hair_emitter.parent = curve_object
+		hair_emitter.rotation_euler = hair_emitter_rotation.to_euler()
+		hair_emitter.rotation_euler.rotate_axis('Z', -first_spline_point.tilt)
+		hair_emitter.location = (0, 0, 0)
+		#for some reason, spline point tilts twist hairs in the opposite direction from what is expected
+		#this is the only way I can think to fix the issue: flipping all the spline point tilts :(
+		for spline_point in curve_data.splines[0].bezier_points:
+			spline_point.tilt = -spline_point.tilt
+		
 	hair_emitter.parent = curve_object
 	bpy.ops.object.particle_system_add()
 	hair_settings = hair_emitter.particle_systems[0].settings
