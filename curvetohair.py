@@ -43,10 +43,6 @@ def main(context):
 	#calculate rotation of the hair emitter
 	hair_emitter_normal = mathutils.Vector(spline_points[0].co.xyz - spline_points[1].co.xyz).normalized()
 	hair_emitter_rotation = hair_emitter_normal.to_track_quat('Z', 'Y')
-	#rotate hair_emitter_rotation by the tilt of the first spline point
-	#hair_emitter_rotation.rotate(mathutils.Quaternion(hair_emitter_normal, -first_spline_point.tilt))
-	#and radius
-	hair_emitter_radius = curve_data.bevel_depth / spline_points[0].radius
 	
 	curve_object.display_type = 'WIRE'
 	curve_object.hide_render = True
@@ -65,13 +61,14 @@ def main(context):
 	#create a collection for the field to influence and add the curve to it 
 	field_collection = bpy.context.blend_data.collections.new(name='curve to hair influence col')
 	field_collection.objects.link(curve_object)
+	field_collection.use_fake_user = True
 	
 	hair_emitter = None
 		
 	#todo: avoid using bpy.ops
 	if(curve_data.bevel_mode == 'ROUND'):	
 		#create circle with radius of round bevel curve
-		bpy.ops.mesh.primitive_circle_add(fill_type='TRIFAN', radius = hair_emitter_radius, rotation = hair_emitter_rotation.to_euler(), location = (0, 0, 0))
+		bpy.ops.mesh.primitive_circle_add(fill_type='TRIFAN', radius = curve_data.bevel_depth, rotation = hair_emitter_rotation.to_euler(), location = (0, 0, 0))
 		#the newly created circle is selected, so grab it from context
 		hair_emitter = bpy.context.active_object
 	elif(curve_data.bevel_mode == 'OBJECT'):
@@ -90,6 +87,9 @@ def main(context):
 	hair_emitter.rotation_euler = hair_emitter_rotation.to_euler()
 	hair_emitter.rotation_euler.rotate_axis('Z', spline_points[0].tilt)
 	hair_emitter.location = (0, 0, 0)
+	radius_inverse = 1 / spline_points[0].radius
+	hair_emitter.scale = (radius_inverse, radius_inverse, radius_inverse)
+	bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 	bpy.ops.object.particle_system_add()
 	hair_settings = hair_emitter.particle_systems[0].settings
 	hair_settings.type = 'HAIR'
