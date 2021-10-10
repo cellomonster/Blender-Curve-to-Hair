@@ -1,3 +1,16 @@
+bl_info = {
+    "name": "Curve to Hair",
+    "description": "Create a hair emitter that follows a selected curve",
+    "author": "Julian 'cellomonster' Triveri",
+    "version": (0, 2),
+    "blender": (2, 80, 0),
+    "location": "Object > Convert > Curve to Hair",
+    "warning": "WIP", # used for warning icon and text in addons panel
+    "tracker_url": "https://github.com/cellomonster/Blender-Curve-to-Hair/issues",
+    "support": "COMMUNITY",
+    "category": "Convert",
+}
+
 import bpy
 import math
 import mathutils
@@ -65,13 +78,13 @@ def main(context):
 		hair_emitter = None
 			
 		#todo: avoid using bpy.ops
-		if(curve_data.bevel_mode == 'ROUND'):	
+		if curve_data.bevel_mode == 'ROUND' :	
 			#create circle with radius of round bevel curve
 			bpy.ops.mesh.primitive_circle_add(fill_type='TRIFAN', radius = curve_data.bevel_depth, rotation = hair_emitter_rotation.to_euler(), location = (0, 0, 0))
 			#the newly created circle is selected, so grab it from context
 			hair_emitter = bpy.context.active_object
 			
-		elif(curve_data.bevel_mode == 'OBJECT'):
+		elif curve_data.bevel_mode == 'OBJECT' :
 			#create a new mesh with the shape of the bevel object
 			
 			#select the bevel object
@@ -117,19 +130,35 @@ class CurveToHair(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		return 1
+		return context.active_object.type == 'CURVE'
 
 	def execute(self, context):
 		main(context)
 		return {'FINISHED'}
+	
+def menu_func(self, context):
+	layout = self.layout
+	layout.operator(CurveToHair.bl_idname)
+	
+def context_menu_func(self, context):
+	if context.active_object.type != 'CURVE':
+		return
+	layout = self.layout
+	layout.separator()
+	layout.operator(CurveToHair.bl_idname)
+		
 
 
 def register():
 	bpy.utils.register_class(CurveToHair)
+	bpy.types.VIEW3D_MT_object_convert.append(menu_func)
+	bpy.types.VIEW3D_MT_object_context_menu.append(context_menu_func)
 
 
 def unregister():
 	bpy.utils.unregister_class(CurveToHair)
+	bpy.types.VIEW3D_MT_object_convert.remove(menu_func)
+	bpy.types.VIEW3D_MT_object_context_menu.remove(context_menu_func)
 
 
 if __name__ == "__main__":
