@@ -8,26 +8,24 @@ def main(context):
 	#get selected object
 	curve_object = bpy.context.active_object
 	#check that it is a curve
-	if(curve_object.type != 'CURVE'):
+	if curve_object.type != 'CURVE':
 		return
 	
 	curve_data = curve_object.data
 	
-	#check bevel mode. profile is not YET supported
-	if(curve_data.bevel_mode == 'PROFILE'):
+	#check bevel mode. profile is not supported (yet:tm:)
+	if curve_data.bevel_mode == 'PROFILE':
 		#todo: support profile mode
 		return
 	
 	#make sure the curve actually has a bevel object
-	if(curve_data.bevel_mode == 'OBJECT' and curve_data.bevel_object == None):
+	if curve_data.bevel_mode == 'OBJECT' and curve_data.bevel_object == None:
 		return
 	
-	
 	spline = curve_data.splines[0]
-	
 	spline_points = None
 	
-	#make sure the curve is of the type we want
+	#points are different depending on if the curve is a NURBS or bezier curve
 	if spline.type == 'BEZIER':
 		spline_points = spline.bezier_points
 	elif spline.type == 'NURBS':
@@ -35,8 +33,9 @@ def main(context):
 	else:
 		return
 	
-	#for some reason, spline point tilts twist hairs in the opposite direction from what is expected
-	#this is the only way I can think to fix the issue: flipping all the spline point tilts :(
+	#flip spline tilt
+	#note: for some reason, spline tilt twists hair in the opposite direction from what you'd expect
+	#this is the only way I can think to fix the issue :(
 	for spline_point in spline_points:
 			spline_point.tilt = -spline_point.tilt
 		
@@ -44,9 +43,10 @@ def main(context):
 	hair_emitter_normal = mathutils.Vector(spline_points[0].co.xyz - spline_points[1].co.xyz).normalized()
 	hair_emitter_rotation = hair_emitter_normal.to_track_quat('Z', 'Y')
 	
+	#make curve wireframe in viewport
 	curve_object.display_type = 'WIRE'
 	curve_object.hide_render = True
-	#for cycles viewport
+	#hide in cycles viewport
 	curve_object.cycles_visibility.camera = False
 	curve_object.cycles_visibility.diffuse = False
 	curve_object.cycles_visibility.glossy = False
@@ -71,10 +71,15 @@ def main(context):
 		bpy.ops.mesh.primitive_circle_add(fill_type='TRIFAN', radius = curve_data.bevel_depth, rotation = hair_emitter_rotation.to_euler(), location = (0, 0, 0))
 		#the newly created circle is selected, so grab it from context
 		hair_emitter = bpy.context.active_object
+		
 	elif(curve_data.bevel_mode == 'OBJECT'):
+		#create a new mesh with the shape of the bevel object
+		
+		#select the bevel object
 		bpy.ops.object.select_all(action='DESELECT')
 		bpy.context.view_layer.objects.active = curve_data.bevel_object
 		curve_data.bevel_object.select_set(True)
+		#duplicate and convert copy to mesh
 		bpy.ops.object.duplicate_move()
 		hair_emitter = bpy.context.active_object
 		bpy.ops.object.convert(target='MESH')
@@ -83,17 +88,21 @@ def main(context):
 		bpy.ops.mesh.edge_face_add()
 		bpy.ops.object.editmode_toggle()
 		
+	#orient emitter
 	hair_emitter.parent = curve_object
 	hair_emitter.rotation_euler = hair_emitter_rotation.to_euler()
 	hair_emitter.rotation_euler.rotate_axis('Z', spline_points[0].tilt)
 	hair_emitter.location = (0, 0, 0)
+	#size emitter depending on radius
 	radius_inverse = 1 / spline_points[0].radius
 	hair_emitter.scale = (radius_inverse, radius_inverse, radius_inverse)
 	bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+	#add hair
 	bpy.ops.object.particle_system_add()
 	hair_settings = hair_emitter.particle_systems[0].settings
 	hair_settings.type = 'HAIR'
-	#make sure only the curve we want to influence the hair actually influences the hair
+	#limit field influence to the group that our curve is in
+	#this ensures only THAT curve can influence this hair system
 	hair_settings.effector_weights.collection = field_collection
 	#todo: change based on curve length
 	hair_settings.display_step = 5
