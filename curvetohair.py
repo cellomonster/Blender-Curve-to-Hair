@@ -2,6 +2,7 @@ import bpy
 import math
 import mathutils
 from math import radians
+from array import array
 
 def main(context):
 	#get selected object
@@ -21,6 +22,32 @@ def main(context):
 	if(curve_data.bevel_mode == 'OBJECT' and curve_data.bevel_object == None):
 		return
 	
+	
+	spline = curve_data.splines[0]
+	
+	spline_points = None
+	
+	#make sure the curve is of the type we want
+	if spline.type == 'BEZIER':
+		spline_points = spline.bezier_points
+	elif spline.type == 'NURBS':
+		spline_points = spline.points
+	else:
+		return
+	
+	#for some reason, spline point tilts twist hairs in the opposite direction from what is expected
+	#this is the only way I can think to fix the issue: flipping all the spline point tilts :(
+	for spline_point in spline_points:
+			spline_point.tilt = -spline_point.tilt
+		
+	#calculate rotation of the hair emitter
+	hair_emitter_normal = mathutils.Vector(spline_points[0].co.xyz - spline_points[1].co.xyz).normalized()
+	hair_emitter_rotation = hair_emitter_normal.to_track_quat('Z', 'Y')
+	#rotate hair_emitter_rotation by the tilt of the first spline point
+	#hair_emitter_rotation.rotate(mathutils.Quaternion(hair_emitter_normal, -first_spline_point.tilt))
+	#and radius
+	hair_emitter_radius = curve_data.bevel_depth / spline_points[0].radius
+	
 	curve_object.display_type = 'WIRE'
 	curve_object.hide_render = True
 	#for cycles viewport
@@ -38,16 +65,6 @@ def main(context):
 	#create a collection for the field to influence and add the curve to it 
 	field_collection = bpy.context.blend_data.collections.new(name='curve to hair influence col')
 	field_collection.objects.link(curve_object)
-	
-	first_spline_point = curve_data.splines[0].bezier_points[0];
-	#calculate rotation of the hair emitter
-	first_spline_handle_direction = first_spline_point.co - first_spline_point.handle_right
-	hair_emitter_normal = mathutils.Vector(first_spline_handle_direction).normalized()
-	hair_emitter_rotation = hair_emitter_normal.to_track_quat('Z', 'Y')
-	#rotate hair_emitter_rotation by the tilt of the first spline point
-	#hair_emitter_rotation.rotate(mathutils.Quaternion(hair_emitter_normal, -first_spline_point.tilt))
-	#and radius
-	hair_emitter_radius = curve_data.bevel_depth / first_spline_point.radius
 	
 	hair_emitter = None
 		
@@ -68,16 +85,11 @@ def main(context):
 		bpy.ops.mesh.select_all(action='SELECT')
 		bpy.ops.mesh.edge_face_add()
 		bpy.ops.object.editmode_toggle()
-		hair_emitter.parent = curve_object
-		hair_emitter.rotation_euler = hair_emitter_rotation.to_euler()
-		hair_emitter.rotation_euler.rotate_axis('Z', -first_spline_point.tilt)
-		hair_emitter.location = (0, 0, 0)
-		#for some reason, spline point tilts twist hairs in the opposite direction from what is expected
-		#this is the only way I can think to fix the issue: flipping all the spline point tilts :(
-		for spline_point in curve_data.splines[0].bezier_points:
-			spline_point.tilt = -spline_point.tilt
 		
 	hair_emitter.parent = curve_object
+	hair_emitter.rotation_euler = hair_emitter_rotation.to_euler()
+	hair_emitter.rotation_euler.rotate_axis('Z', spline_points[0].tilt)
+	hair_emitter.location = (0, 0, 0)
 	bpy.ops.object.particle_system_add()
 	hair_settings = hair_emitter.particle_systems[0].settings
 	hair_settings.type = 'HAIR'
