@@ -69,11 +69,6 @@ def main(context):
 		curve_object.field.guide_minimum = 0
 		
 		#rescale curve so that first spline point radius is 1
-		
-		print("spline_points length: " + str(len(spline_points)))
-		
-		bpy.ops.object.select_all(action='DESELECT')
-		bpy.context.view_layer.objects.active = curve_object
 		bpy.ops.view3d.snap_cursor_to_selected()
 		previous_piviot_mode = bpy.context.scene.tool_settings.transform_pivot_point
 		bpy.context.scene.tool_settings.transform_pivot_point = 'CURSOR'
