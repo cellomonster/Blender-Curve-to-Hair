@@ -102,6 +102,7 @@ def main(context):
 			bmesh.ops.holes_fill(bm, edges = bm.edges, sides = len(bm.edges))
 			bm.to_mesh(hair_emitter.data)
 			bm.free()
+			hair_emitter.scale = curve_data.bevel_object.scale
 			
 		#orient emitter
 		hair_emitter.parent = curve_object
