@@ -16,13 +16,13 @@ Object > Convert > Curve to Hair
 - Does not support curves with the 'Profile' bevel type
 
 ### TODO ###
-- [+] Eliminate need for bevel object to be visible in the viewport 
+- [X] Eliminate need for bevel object to be visible in the viewport 
 - [ ] Prevent curves from influencing existing hair systems
 - [ ] Automatically set hair steps based on curve length
 - [ ] Copy curve material to hairs
 - [ ] Create operator settings panel
 - [ ] Move emitter with first spline point when you edit the curve
 - [ ] Fix issues with hairs and curve twist
-- [+] Eliminate all usage of operators within the plugin
+- [X] Eliminate all usage of operators within the plugin
 
 ![screenshot](screenshot.png)
