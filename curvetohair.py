@@ -38,11 +38,13 @@ def main(context):
 		spline_points = None
 		
 		hair_emitter_normal = None
+		is_bezier = False
 		
 		#points are different depending on if the curve is a NURBS or bezier curve
 		if spline.type == 'BEZIER':
 			spline_points = spline.bezier_points
 			hair_emitter_normal = mathutils.Vector(spline_points[0].co - spline_points[0].handle_right).normalized()
+			is_bezier = True
 		elif spline.type == 'NURBS':
 			spline_points = spline.points
 			hair_emitter_normal = mathutils.Vector(spline_points[0].co.xyz - spline_points[1].co.xyz).normalized()
@@ -77,6 +79,9 @@ def main(context):
 		curve_origin = curve_object.location
 		for spline_point in spline_points:
 			spline_point.co /= scale
+			if is_bezier:
+				spline_point.handle_right /= scale
+				spline_point.handle_left /= scale
 			spline_point.radius /= scale
 			#tilt is flipped as hairs twist opposite of tilt
 			#dont ask me why
