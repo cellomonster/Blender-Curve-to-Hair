@@ -1,5 +1,5 @@
 # Blender-Curve-to-Hair
-A macro operator that creates particle hairs from beveled Bézier curves
+An EXPERIMENTAL operator that creates particle hairs from beveled Bézier curves. A small personal exercise for building Blender plugins
 
 - Shift select and convert several hairs at once
 - Edit the hair shape by editing the curve
