@@ -9,6 +9,7 @@ Object > Convert > Curve to Hair
 
 ### ⚠️ IMPORTANT ISSUES ⚠️ ###
 - If a curve's bevel object is hidden (either individually or in a hidden group) the operator will fail
+- Curves will interfere with existing particle systems
 - Hair systems are driven by an isolated curve-guide field and follow the shape of the curve. You cannot groom them like regular hair systems
 - The hair emitter will not follow the first spline point if you move it. If you want to change where the curve 'starts,' you'll need to move the whole curve as an object
 - Hairs don't perfectly follow curves with lots of twisting
@@ -17,6 +18,7 @@ Object > Convert > Curve to Hair
 
 ### TODO ###
 - [ ] Eliminate need for bevel object to be visible in the viewport 
+- [ ] Prevent curves from influencing existing hair systems
 - [ ] Automatically set hair steps based on curve length
 - [ ] Copy curve material to hairs
 - [ ] Create operator settings panel
