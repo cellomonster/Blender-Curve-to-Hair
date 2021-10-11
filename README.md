@@ -7,7 +7,7 @@ An EXPERIMENTAL operator that creates particle hairs from beveled Bézier curves
 
 Object > Convert > Curve to Hair 
 
-### ⚠️ IMPORTANT ISSUES ⚠️ ###
+### ⚠️ IMPORTANT ISSUES (READ THIS!) ⚠️ ###
 - If a curve's bevel object is hidden (either individually or in a hidden group) the operator will fail
 - Curves will interfere with existing particle systems
 - Hair systems are driven by an isolated curve-guide field and follow the shape of the curve. You cannot groom them like regular hair systems
