@@ -14,8 +14,8 @@ bl_info = {
 import bpy
 import math
 import mathutils
+import bmesh
 from math import radians
-from array import array
 
 def main(context):
 	for curve_object in bpy.context.selected_objects:
@@ -37,23 +37,27 @@ def main(context):
 		spline = curve_data.splines[0]
 		spline_points = None
 		
+		hair_emitter_normal = None
+		is_bezier = False
+		
 		#points are different depending on if the curve is a NURBS or bezier curve
 		if spline.type == 'BEZIER':
 			spline_points = spline.bezier_points
+			hair_emitter_normal = mathutils.Vector(spline_points[0].co - spline_points[0].handle_right).normalized()
+			is_bezier = True
 		elif spline.type == 'NURBS':
 			spline_points = spline.points
+			hair_emitter_normal = mathutils.Vector(spline_points[0].co.xyz - spline_points[1].co.xyz).normalized()
 		else:
 			continue
 		
-		#flip spline tilt
-		#note: for some reason, spline tilt twists hair in the opposite direction from what you'd expect
-		#this is the only way I can think to fix the issue :(
-		for spline_point in spline_points:
-				spline_point.tilt = -spline_point.tilt
-			
 		#calculate rotation of the hair emitter
-		hair_emitter_normal = mathutils.Vector(spline_points[0].co.xyz - spline_points[1].co.xyz).normalized()
 		hair_emitter_rotation = hair_emitter_normal.to_track_quat('Z', 'Y')
+		
+		#create a collection for the field to influence and add the curve to it
+		field_collection = bpy.context.blend_data.collections.new(name='curve to hair influence col')
+		field_collection.use_fake_user = True
+		field_collection.objects.link(curve_object)
 		
 		#make curve wireframe in viewport
 		curve_object.display_type = 'WIRE'
@@ -70,47 +74,61 @@ def main(context):
 		curve_object.field.type = 'GUIDE'
 		curve_object.field.guide_minimum = 0
 		
-		#create a collection for the field to influence and add the curve to it 
-		field_collection = bpy.context.blend_data.collections.new(name='curve to hair influence col')
-		field_collection.objects.link(curve_object)
-		field_collection.use_fake_user = True
+		#rescale curve so that first spline point radius is 1
+		scale = spline_points[0].radius
+		curve_origin = curve_object.location
+		for spline_point in spline_points:
+			spline_point.co /= scale
+			if is_bezier:
+				spline_point.handle_right /= scale
+				spline_point.handle_left /= scale
+			spline_point.radius /= scale
+			#tilt is flipped as hairs twist opposite of tilt
+			#dont ask me why
+			spline_point.tilt = -spline_point.tilt
+		curve_object.scale *= scale
 		
+		#create hair emitter
 		hair_emitter = None
 			
 		#todo: avoid using bpy.ops
-		if curve_data.bevel_mode == 'ROUND' :	
+		if curve_data.bevel_mode == 'ROUND' :
+			hair_emitter_mesh = bpy.data.meshes.new('hair emitter mesh')
+			hair_emitter = bpy.data.objects.new('hair emitter', hair_emitter_mesh)
 			#create circle with radius of round bevel curve
-			bpy.ops.mesh.primitive_circle_add(fill_type='TRIFAN', radius = curve_data.bevel_depth, rotation = hair_emitter_rotation.to_euler(), location = (0, 0, 0))
+			#bpy.ops.mesh.primitive_circle_add(fill_type='TRIFAN', radius = curve_data.bevel_depth, location = (0, 0, 0))
 			#the newly created circle is selected, so grab it from context
-			hair_emitter = bpy.context.active_object
+			bm = bmesh.new()
+			bm.from_mesh(hair_emitter.data)
+			bmesh.ops.create_circle(bm, cap_ends = True, cap_tris = True, segments = curve_data.bevel_resolution + 4, radius = curve_data.bevel_depth)
+			bm.to_mesh(hair_emitter.data)
+			bm.free()
+
+			
+			#hair_emitter = bpy.context.active_object
 			
 		elif curve_data.bevel_mode == 'OBJECT' :
-			#create a new mesh with the shape of the bevel object
-			
-			#select the bevel object
-			bpy.ops.object.select_all(action='DESELECT')
-			bpy.context.view_layer.objects.active = curve_data.bevel_object
-			curve_data.bevel_object.select_set(True)
-			#duplicate and convert copy to mesh
-			bpy.ops.object.duplicate_move()
-			hair_emitter = bpy.context.active_object
-			bpy.ops.object.convert(target='MESH')
-			bpy.ops.object.editmode_toggle()
-			bpy.ops.mesh.select_all(action='SELECT')
-			bpy.ops.mesh.edge_face_add()
-			bpy.ops.object.editmode_toggle()
+			#create a mesh version of the bevel object
+			depsgraph = bpy.context.evaluated_depsgraph_get()
+			object_eval = curve_data.bevel_object.evaluated_get(depsgraph)
+			tmpMesh = bpy.data.meshes.new_from_object(object_eval)    
+			hair_emitter = bpy.data.objects.new(name='hair emitter', object_data = tmpMesh)
+			bm = bmesh.new()
+			bm.from_mesh(hair_emitter.data)
+			bmesh.ops.holes_fill(bm, edges = bm.edges, sides = len(bm.edges))
+			bm.to_mesh(hair_emitter.data)
+			bm.free()
+			#todo apply scale after scaling hair_emitter
+			hair_emitter.scale = curve_data.bevel_object.scale
 			
 		#orient emitter
+		bpy.context.view_layer.layer_collection.collection.objects.link(hair_emitter)
 		hair_emitter.parent = curve_object
 		hair_emitter.rotation_euler = hair_emitter_rotation.to_euler()
 		hair_emitter.rotation_euler.rotate_axis('Z', spline_points[0].tilt)
 		hair_emitter.location = (0, 0, 0)
-		#size emitter depending on radius
-		radius_inverse = 1 / spline_points[0].radius
-		hair_emitter.scale = (radius_inverse, radius_inverse, radius_inverse)
-		bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 		#add hair
-		bpy.ops.object.particle_system_add()
+		hair_emitter.modifiers.new("part", type='PARTICLE_SYSTEM')
 		hair_settings = hair_emitter.particle_systems[0].settings
 		hair_settings.type = 'HAIR'
 		#limit field influence to the group that our curve is in
@@ -151,14 +169,14 @@ def context_menu_func(self, context):
 
 def register():
 	bpy.utils.register_class(CurveToHair)
-	bpy.types.VIEW3D_MT_object_convert.append(menu_func)
-	bpy.types.VIEW3D_MT_object_context_menu.append(context_menu_func)
+#	bpy.types.VIEW3D_MT_object_convert.append(menu_func)
+#	bpy.types.VIEW3D_MT_object_context_menu.append(context_menu_func)
 
 
 def unregister():
 	bpy.utils.unregister_class(CurveToHair)
-	bpy.types.VIEW3D_MT_object_convert.remove(menu_func)
-	bpy.types.VIEW3D_MT_object_context_menu.remove(context_menu_func)
+#	bpy.types.VIEW3D_MT_object_convert.remove(menu_func)
+#	bpy.types.VIEW3D_MT_object_context_menu.remove(context_menu_func)
 
 
 if __name__ == "__main__":
