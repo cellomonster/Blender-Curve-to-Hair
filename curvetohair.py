@@ -14,8 +14,8 @@ bl_info = {
 import bpy
 import math
 import mathutils
+import bmesh
 from math import radians
-from array import array
 
 def main(context):
 	for curve_object in bpy.context.selected_objects:
@@ -45,9 +45,10 @@ def main(context):
 		else:
 			continue
 		
-		#create a collection for the field to influence and add the curve to it 
+		#create a collection for the field to influence and add the curve to it
 		field_collection = bpy.context.blend_data.collections.new(name='curve to hair influence col')
 		field_collection.use_fake_user = True
+		field_collection.objects.link(curve_object)
 			
 		#calculate rotation of the hair emitter
 		hair_emitter_normal = mathutils.Vector(spline_points[0].co.xyz - spline_points[1].co.xyz).normalized()
@@ -69,32 +70,15 @@ def main(context):
 		curve_object.field.guide_minimum = 0
 		
 		#rescale curve so that first spline point radius is 1
-		bpy.ops.view3d.snap_cursor_to_selected()
-		previous_piviot_mode = bpy.context.scene.tool_settings.transform_pivot_point
-		bpy.context.scene.tool_settings.transform_pivot_point = 'CURSOR'
-		
-		scale_inverse = 1 / spline_points[0].radius
 		scale = spline_points[0].radius
-		bpy.ops.object.editmode_toggle()
-		bpy.ops.curve.select_all(action='SELECT')
-		bpy.ops.transform.resize(value = (scale_inverse, scale_inverse, scale_inverse), orient_type='GLOBAL')
-		bpy.ops.transform.transform(mode='CURVE_SHRINKFATTEN', value = (scale_inverse, 0, 0, 0), orient_type='GLOBAL')
-		bpy.ops.object.editmode_toggle()
-		bpy.ops.transform.resize(value = (scale, scale, scale), orient_type='GLOBAL')
-		bpy.context.scene.tool_settings.transform_pivot_point = previous_piviot_mode
-		
-		#get spline and points again after editing
-		#not sure why this is needed
-		spline = curve_object.data.splines[0]
-		if spline.type == 'BEZIER':
-			spline_points = spline.bezier_points
-		elif spline.type == 'NURBS':
-			spline_points = spline.points
-		
+		curve_origin = curve_object.location
 		for spline_point in spline_points:
+			spline_point.co /= scale
+			spline_point.radius /= scale
+			#tilt is flipped as hairs twist opposite of tilt
+			#dont ask me why
 			spline_point.tilt = -spline_point.tilt
-			
-		field_collection.objects.link(curve_object)
+		curve_object.scale *= scale
 		
 		#create hair emitter
 		hair_emitter = None
@@ -107,32 +91,25 @@ def main(context):
 			hair_emitter = bpy.context.active_object
 			
 		elif curve_data.bevel_mode == 'OBJECT' :
-			#create a new mesh with the shape of the bevel object
-			
-			#select the bevel object
-			bpy.ops.object.select_all(action='DESELECT')
-			bpy.context.view_layer.objects.active = curve_data.bevel_object
-			curve_data.bevel_object.select_set(True)
-			#duplicate and convert copy to mesh
-			bpy.ops.object.duplicate_move()
-			hair_emitter = bpy.context.active_object
-			bpy.ops.object.convert(target='MESH')
-			bpy.ops.object.editmode_toggle()
-			bpy.ops.mesh.select_all(action='SELECT')
-			bpy.ops.mesh.edge_face_add()
-			bpy.ops.object.editmode_toggle()
+			#create a mesh version of the bevel object
+			depsgraph = bpy.context.evaluated_depsgraph_get()
+			object_eval = curve_data.bevel_object.evaluated_get(depsgraph)
+			tmpMesh = bpy.data.meshes.new_from_object(object_eval)    
+			hair_emitter = bpy.data.objects.new(name='hair emitter', object_data = tmpMesh)
+			bpy.context.view_layer.layer_collection.collection.objects.link(hair_emitter)
+			bm = bmesh.new()
+			bm.from_mesh(hair_emitter.data)
+			bmesh.ops.holes_fill(bm, edges = bm.edges, sides = len(bm.edges))
+			bm.to_mesh(hair_emitter.data)
+			bm.free()
 			
 		#orient emitter
 		hair_emitter.parent = curve_object
 		hair_emitter.rotation_euler = hair_emitter_rotation.to_euler()
 		hair_emitter.rotation_euler.rotate_axis('Z', spline_points[0].tilt)
 		hair_emitter.location = (0, 0, 0)
-		#size emitter depending on radius
-		radius_inverse = 1 / spline_points[0].radius
-		#hair_emitter.scale = (radius_inverse, radius_inverse, radius_inverse)
-		#bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 		#add hair
-		bpy.ops.object.particle_system_add()
+		hair_emitter.modifiers.new("part", type='PARTICLE_SYSTEM')
 		hair_settings = hair_emitter.particle_systems[0].settings
 		hair_settings.type = 'HAIR'
 		#limit field influence to the group that our curve is in
