@@ -37,22 +37,25 @@ def main(context):
 		spline = curve_data.splines[0]
 		spline_points = None
 		
+		hair_emitter_normal = None
+		
 		#points are different depending on if the curve is a NURBS or bezier curve
 		if spline.type == 'BEZIER':
 			spline_points = spline.bezier_points
+			hair_emitter_normal = mathutils.Vector(spline_points[0].co - spline_points[0].handle_right).normalized()
 		elif spline.type == 'NURBS':
 			spline_points = spline.points
+			hair_emitter_normal = mathutils.Vector(spline_points[0].co.xyz - spline_points[1].co.xyz).normalized()
 		else:
 			continue
+		
+		#calculate rotation of the hair emitter
+		hair_emitter_rotation = hair_emitter_normal.to_track_quat('Z', 'Y')
 		
 		#create a collection for the field to influence and add the curve to it
 		field_collection = bpy.context.blend_data.collections.new(name='curve to hair influence col')
 		field_collection.use_fake_user = True
 		field_collection.objects.link(curve_object)
-			
-		#calculate rotation of the hair emitter
-		hair_emitter_normal = mathutils.Vector(spline_points[0].co.xyz - spline_points[1].co.xyz).normalized()
-		hair_emitter_rotation = hair_emitter_normal.to_track_quat('Z', 'Y')
 		
 		#make curve wireframe in viewport
 		curve_object.display_type = 'WIRE'
@@ -84,11 +87,20 @@ def main(context):
 		hair_emitter = None
 			
 		#todo: avoid using bpy.ops
-		if curve_data.bevel_mode == 'ROUND' :	
+		if curve_data.bevel_mode == 'ROUND' :
+			hair_emitter_mesh = bpy.data.meshes.new('hair emitter mesh')
+			hair_emitter = bpy.data.objects.new('hair emitter', hair_emitter_mesh)
 			#create circle with radius of round bevel curve
-			bpy.ops.mesh.primitive_circle_add(fill_type='TRIFAN', radius = curve_data.bevel_depth, location = (0, 0, 0))
+			#bpy.ops.mesh.primitive_circle_add(fill_type='TRIFAN', radius = curve_data.bevel_depth, location = (0, 0, 0))
 			#the newly created circle is selected, so grab it from context
-			hair_emitter = bpy.context.active_object
+			bm = bmesh.new()
+			bm.from_mesh(hair_emitter.data)
+			bmesh.ops.create_circle(bm, cap_ends = True, cap_tris = True, segments = curve_data.bevel_resolution + 4, radius = curve_data.bevel_depth)
+			bm.to_mesh(hair_emitter.data)
+			bm.free()
+
+			
+			#hair_emitter = bpy.context.active_object
 			
 		elif curve_data.bevel_mode == 'OBJECT' :
 			#create a mesh version of the bevel object
@@ -96,15 +108,16 @@ def main(context):
 			object_eval = curve_data.bevel_object.evaluated_get(depsgraph)
 			tmpMesh = bpy.data.meshes.new_from_object(object_eval)    
 			hair_emitter = bpy.data.objects.new(name='hair emitter', object_data = tmpMesh)
-			bpy.context.view_layer.layer_collection.collection.objects.link(hair_emitter)
 			bm = bmesh.new()
 			bm.from_mesh(hair_emitter.data)
 			bmesh.ops.holes_fill(bm, edges = bm.edges, sides = len(bm.edges))
 			bm.to_mesh(hair_emitter.data)
 			bm.free()
+			#todo apply scale after scaling hair_emitter
 			hair_emitter.scale = curve_data.bevel_object.scale
 			
 		#orient emitter
+		bpy.context.view_layer.layer_collection.collection.objects.link(hair_emitter)
 		hair_emitter.parent = curve_object
 		hair_emitter.rotation_euler = hair_emitter_rotation.to_euler()
 		hair_emitter.rotation_euler.rotate_axis('Z', spline_points[0].tilt)
