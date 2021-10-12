@@ -51,6 +51,8 @@ def main(context):
 		else:
 			continue
 		
+		curve_data.use_path = True
+		
 		#calculate rotation of the hair emitter
 		hair_emitter_rotation = hair_emitter_normal.to_track_quat('Z', 'Y')
 		
