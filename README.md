@@ -18,12 +18,12 @@ Object > Convert > Curve to Hair
 ### TODO ###
 - [ ] Prevent curves from influencing existing hair systems
 - [ ] Automatically set hair steps based on curve length
-- [ ] Copy curve material to hairs
 - [ ] Create operator settings panel
 - [ ] Move emitter with first spline point when you edit the curve
 - [ ] Fix issues with hairs and curve twist
 
 ### Done ###
+- [X] Copy curve material to hairs
 - [X] Eliminate need for bevel object to be visible in the viewport 
 - [X] Eliminate all usage of operators within the plugin
 
