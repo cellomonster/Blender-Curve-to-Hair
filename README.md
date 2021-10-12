@@ -23,7 +23,7 @@ Object > Convert > Curve to Hair
 - [ ] Move emitter with first spline point when you edit the curve
 - [ ] Fix issues with hairs and curve twist
 
-### DONE ###
+### Done ###
 - [X] Eliminate need for bevel object to be visible in the viewport 
 - [X] Eliminate all usage of operators within the plugin
 
