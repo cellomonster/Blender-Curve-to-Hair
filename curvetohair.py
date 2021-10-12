@@ -139,7 +139,9 @@ def main(context):
 		#hide emitter
 		hair_emitter.show_instancer_for_render = False
 		hair_emitter.show_instancer_for_viewport = False
-	
+		
+		if len(curve_object.material_slots) > 0:
+			hair_emitter.data.materials.append(curve_object.material_slots[0].material)
 
 class CurveToHair(bpy.types.Operator):
 	"""Tooltip"""
@@ -169,14 +171,14 @@ def context_menu_func(self, context):
 
 def register():
 	bpy.utils.register_class(CurveToHair)
-#	bpy.types.VIEW3D_MT_object_convert.append(menu_func)
-#	bpy.types.VIEW3D_MT_object_context_menu.append(context_menu_func)
+	bpy.types.VIEW3D_MT_object_convert.append(menu_func)
+	bpy.types.VIEW3D_MT_object_context_menu.append(context_menu_func)
 
 
 def unregister():
 	bpy.utils.unregister_class(CurveToHair)
-#	bpy.types.VIEW3D_MT_object_convert.remove(menu_func)
-#	bpy.types.VIEW3D_MT_object_context_menu.remove(context_menu_func)
+	bpy.types.VIEW3D_MT_object_convert.remove(menu_func)
+	bpy.types.VIEW3D_MT_object_context_menu.remove(context_menu_func)
 
 
 if __name__ == "__main__":
