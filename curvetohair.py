@@ -169,14 +169,14 @@ def context_menu_func(self, context):
 
 def register():
 	bpy.utils.register_class(CurveToHair)
-#	bpy.types.VIEW3D_MT_object_convert.append(menu_func)
-#	bpy.types.VIEW3D_MT_object_context_menu.append(context_menu_func)
+	bpy.types.VIEW3D_MT_object_convert.append(menu_func)
+	bpy.types.VIEW3D_MT_object_context_menu.append(context_menu_func)
 
 
 def unregister():
 	bpy.utils.unregister_class(CurveToHair)
-#	bpy.types.VIEW3D_MT_object_convert.remove(menu_func)
-#	bpy.types.VIEW3D_MT_object_context_menu.remove(context_menu_func)
+	bpy.types.VIEW3D_MT_object_convert.remove(menu_func)
+	bpy.types.VIEW3D_MT_object_context_menu.remove(context_menu_func)
 
 
 if __name__ == "__main__":
