@@ -15,9 +15,11 @@ import bpy
 import math
 import mathutils
 import bmesh
+#import faulthandler
 from math import radians
 
 def main(context):
+	#faulthandler.enable()
 	for curve_object in bpy.context.selected_objects:
 		#check that selected object is a curve
 		if curve_object.type != 'CURVE':
@@ -161,6 +163,7 @@ class CurveToHair(bpy.types.Operator):
 	"""Tooltip"""
 	bl_idname = "object.curvetohair"
 	bl_label = "Curve to Hair"
+	bl_options = {'UNDO'}
 
 	@classmethod
 	def poll(cls, context):
@@ -185,6 +188,10 @@ def context_menu_func(self, context):
 
 def register():
 	bpy.utils.register_class(CurveToHair)
+	
+	#prevent duplicate menu entries
+	if hasattr(bpy.types, bpy.ops.object.curvetohair.idname()):
+		return
 	bpy.types.VIEW3D_MT_object_convert.append(menu_func)
 	bpy.types.VIEW3D_MT_object_context_menu.append(context_menu_func)
 
