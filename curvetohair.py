@@ -4,7 +4,7 @@ bl_info = {
     "author": "Julian 'cellomonster' Triveri",
     "version": (0, 2),
     "blender": (2, 80, 0),
-    "location": "Object > Convert > Curve to Hair",
+    "location": "Object > Curve to Hair",
     "warning": "WIP", # used for warning icon and text in addons panel
     "tracker_url": "https://github.com/cellomonster/Blender-Curve-to-Hair/issues",
     "support": "COMMUNITY",
@@ -186,13 +186,13 @@ def context_menu_func(self, context):
 
 def register():
 	bpy.utils.register_class(CurveToHair)
-	bpy.types.VIEW3D_MT_object_convert.append(menu_func)
+	bpy.types.VIEW3D_MT_object.append(menu_func)
 	bpy.types.VIEW3D_MT_object_context_menu.append(context_menu_func)
 
 
 def unregister():
 	bpy.utils.unregister_class(CurveToHair)
-	bpy.types.VIEW3D_MT_object_convert.remove(menu_func)
+	bpy.types.VIEW3D_MT_object.remove(menu_func)
 	bpy.types.VIEW3D_MT_object_context_menu.remove(context_menu_func)
 
 
