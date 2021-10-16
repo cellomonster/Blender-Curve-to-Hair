@@ -8,7 +8,7 @@ bl_info = {
     "warning": "WIP", # used for warning icon and text in addons panel
     "tracker_url": "https://github.com/cellomonster/Blender-Curve-to-Hair/issues",
     "support": "COMMUNITY",
-    "category": "Convert",
+    "category": "Object",
 }
 
 import bpy
@@ -178,8 +178,6 @@ def menu_func(self, context):
 	layout.operator(CurveToHair.bl_idname)
 	
 def context_menu_func(self, context):
-	if context.active_object.type != 'CURVE':
-		return
 	layout = self.layout
 	layout.separator()
 	layout.operator(CurveToHair.bl_idname)
@@ -188,10 +186,6 @@ def context_menu_func(self, context):
 
 def register():
 	bpy.utils.register_class(CurveToHair)
-	
-	#prevent duplicate menu entries
-	if hasattr(bpy.types, bpy.ops.object.curvetohair.idname()):
-		return
 	bpy.types.VIEW3D_MT_object_convert.append(menu_func)
 	bpy.types.VIEW3D_MT_object_context_menu.append(context_menu_func)
 
