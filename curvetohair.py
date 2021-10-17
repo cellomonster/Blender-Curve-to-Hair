@@ -65,7 +65,8 @@ def main(context):
 		hair_emitter_rotation = hair_em_norm.to_track_quat('Z', 'Y')
 		
 		#create a collection for the field to influence and add the curve to it
-		field_collection = bpy.context.blend_data.collections.new(name='curve to hair col')
+		name = curve_object.name + ' - hair guide collection'
+		field_collection = bpy.context.blend_data.collections.new(name = name)
 		field_collection.use_fake_user = True
 		field_collection.objects.link(curve_object)
 		
@@ -105,8 +106,8 @@ def main(context):
 		hair_emitter = None
 		#if ROUND, the emitter is a disk matching the circle resolution of the bevel
 		if curve_data.bevel_mode == 'ROUND' :
-			mesh = bpy.data.meshes.new('hair emitter mesh')
-			hair_emitter = bpy.data.objects.new('hair emitter', mesh)
+			mesh = bpy.data.meshes.new(curve_object.name + ' - hair emitter mesh')
+			hair_emitter = bpy.data.objects.new(curve_object.name + ' - hair emitter', mesh)
 			#create circle with radius of round bevel curve
 			bm = bmesh.new()
 			bm.from_mesh(hair_emitter.data)
@@ -123,8 +124,9 @@ def main(context):
 			#create a mesh version of the bevel object
 			depsgraph = bpy.context.evaluated_depsgraph_get()
 			object_eval = curve_data.bevel_object.evaluated_get(depsgraph)
-			tmp_mesh = bpy.data.meshes.new_from_object(object_eval)    
-			hair_emitter = bpy.data.objects.new(name='hair emitter', object_data = tmp_mesh)
+			tmp_mesh = bpy.data.meshes.new_from_object(object_eval)
+			name = curve_object.name + ' - hair emitter'    
+			hair_emitter = bpy.data.objects.new(name = name, object_data = tmp_mesh)
 			bm = bmesh.new()
 			bm.from_mesh(hair_emitter.data)
 			#create face from verts
@@ -143,8 +145,9 @@ def main(context):
 		hair_emitter.rotation_euler.rotate_axis('Z', spline_p0.tilt)
 		hair_emitter.location = (0, 0, 0)
 		#add hair
-		hair_emitter.modifiers.new("part", type='PARTICLE_SYSTEM')
+		hair_emitter.modifiers.new('curve-guided hair', type='PARTICLE_SYSTEM')
 		hair_settings = hair_emitter.particle_systems[0].settings
+		hair_settings.name = curve_object.name + ' - hair settings'
 		hair_settings.type = 'HAIR'
 		#limit field influence to the group that our curve is in
 		#this ensures only THAT curve can influence this hair system
