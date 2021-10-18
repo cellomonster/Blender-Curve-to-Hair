@@ -125,16 +125,20 @@ def main(context):
 			depsgraph = bpy.context.evaluated_depsgraph_get()
 			object_eval = curve_data.bevel_object.evaluated_get(depsgraph)
 			tmp_mesh = bpy.data.meshes.new_from_object(object_eval)
-			name = curve_object.name + ' - hair emitter'    
+			name = curve_object.name + ' - hair emitter'
 			hair_emitter = bpy.data.objects.new(name = name, object_data = tmp_mesh)
 			bm = bmesh.new()
 			bm.from_mesh(hair_emitter.data)
+			#rescale to counter parent (curve) scale
+			for vert in bm.verts:
+				vert.co *= curve_object.scale.x
 			#create face from verts
 			bmesh.ops.holes_fill(bm, edges = bm.edges, sides = len(bm.edges))
 			bm.to_mesh(hair_emitter.data)
 			bm.free()
 			#todo apply scale after scaling hair_emitter
-			hair_emitter.scale = curve_data.bevel_object.scale
+			s = 1 / curve_object.scale.x
+			hair_emitter.scale = (s, s, s)
 			
 		#link to view layer collection so the hairs are visible 
 		bpy.context.view_layer.layer_collection.collection.objects.link(hair_emitter)
